@@ -1,6 +1,9 @@
 var aliasify = require('aliasify');
 var babelify = require('babelify');
 var browserify = require('browserify');
+var es2015 = require('babel-preset-es2015')
+var react = require('babel-preset-react')
+var stage = require('babel-preset-stage-0')
 var chalk = require('chalk');
 var connect = require('gulp-connect');
 var del = require('del');
@@ -10,6 +13,27 @@ var merge = require('merge-stream');
 var shim = require('browserify-shim');
 var source = require('vinyl-source-stream');
 var watchify = require('watchify');
+var transformDecoratorsLegacy = require('babel-plugin-transform-decorators-legacy');
+var addModuleExports = require('babel-plugin-add-module-exports');
+var transformObjectAssign = require('babel-plugin-transform-object-assign');
+var syntaxFlow = require('babel-plugin-syntax-flow')
+var reactRequire = require('babel-plugin-react-require')
+
+
+var babelConfig = {
+	presets: [
+		es2015,
+		react,
+		stage
+	],
+	plugins: [
+	    transformDecoratorsLegacy.default,
+	    addModuleExports,
+	    transformObjectAssign,
+	    syntaxFlow,
+	    reactRequire.default
+  	]
+}
 
 module.exports = function (gulp, config) {
 	function doBundle (target, name, dest) {
@@ -52,18 +76,14 @@ module.exports = function (gulp, config) {
 			var common = browserify(opts);
 
 			var bundle = browserify(opts);
-			bundle.transform(babelify.configure({
-				plugins: [require('babel-plugin-object-assign')]
-			}));
+			bundle.transform(babelify.configure(babelConfig));
 			config.aliasify && bundle.transform(aliasify);
 			bundle.require('./' + config.component.src + '/' + config.component.file, { expose: config.component.pkgName });
 
 			var standalone = false;
 			if (config.example.standalone) {
 				standalone = browserify('./' + config.component.src + '/' + config.component.file, { standalone: config.component.name });
-				standalone.transform(babelify.configure({
-					plugins: [require('babel-plugin-object-assign')]
-				}));
+				standalone.transform(babelify.configure(babelConfig));
 				config.aliasify && standalone.transform(aliasify);
 				standalone.transform(shim);
 			}
@@ -72,10 +92,7 @@ module.exports = function (gulp, config) {
 				var fileBundle = browserify(opts);
 				fileBundle.exclude(config.component.pkgName);
 				fileBundle.add('./' + config.example.src + '/' + file);
-				fileBundle.transform(babelify.configure({
-					plugins: [require('babel-plugin-object-assign')]
-				}));
-				fileBundle.transform('brfs');
+				fileBundle.transform(babelify.configure(babelConfig));
 				config.aliasify && fileBundle.transform(aliasify);
 				return {
 					file: file,
